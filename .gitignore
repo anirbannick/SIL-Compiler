@@ -1,0 +1,6 @@
+lex.yy.c
+sil
+sil.dSYM
+*.tab.*
+*.output
+test
