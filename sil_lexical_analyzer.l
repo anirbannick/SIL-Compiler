@@ -1,7 +1,7 @@
 
 
 %{
-    #include "sil_grammer_without_AST.tab.h"
+    #include "sil_grammer.tab.h"
     #include <stdlib.h>
     int e=0;
     
