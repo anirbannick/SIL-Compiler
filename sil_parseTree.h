@@ -1,36 +1,37 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <malloc.h>
+using namespace std;
 
 #define INT 0
 #define BOOL 1
 #define VOID 2
-#define MAIN 100
-#define MAIN_BODY_DECL 101
-#define MAIN_BODY_ONLY 102
-#define STATEMENT 103
-#define ASSGNMT_STMT 104
-#define COND_STMT 105
-#define ITER_STMT 106
-#define IN_OUT_STMT 107
-#define VAR 108
-#define VARLIST 109
 
-#define CONST 110
-#define ARRAY 111
-#define ARRSIZE 112
+#define PROG 100
+#define GLOBAL 101
+#define GLOBAL_LIST 102
+#define VARLIST 103
+#define VAR 104
+#define ARRSIZE 105
+#define ARRAY 106
+#define FUNC 107
+#define ARGS 108
+#define F_PARAM_LIST 109
 
-#define FUN_CALL 113
-#define PARAM_LIST 114
+#define F_PARAM 110
+#define REFERENCE 111
+#define FUNCDEF 112
 
+#define FUNCS 113
+#define MAIN 114
+#define BODY 115
 
-#define ADDEXP 116
-#define SUBEXP 117
-#define MULEXP 118
+#define FDCL 116
+#define FDCLS 117
+#define STMT 118
 #define DIVEXP 119
 #define OREXP  120
-#define PARANTHESIZEDEXP 121
+#define PARTHSEXP 121
 #define LTEXP  122
 #define LEEXP  123
 #define GEEXP  124
@@ -39,9 +40,18 @@
 #define NEEXP  127
 #define ANDEXP 128
 #define EQEXP 129
-#define SWITCH_STMT 130
-#define SWITCH_BODY 131
-#define INDIVIDUAL_STMT 132
+#define ADDEXP 130
+#define SUBEXP 131
+#define MULEXP 132
+#define CONST 133
+#define BOOLCONST 134
+#define FNCALLS 135
+#define FNCALL 136
+#define FCLISTS 137
+#define FCLIST 138
+
+
+
 
 int shift = 0;
 //int lineno = 1;
@@ -53,7 +63,7 @@ struct Tnode {
 	/* this field should carry following information:
 	* a) operator : (+,*,/ etc.) for expressions
 	* b) statement Type : (WHILE, READ etc.) for statements */
-	char name[100]; // For Identifiers/Functions
+	char *name; // For Identifiers/Functions
 	int value; // for constants
 	struct Tnode *left, *middle, *right;
 	
@@ -65,7 +75,7 @@ struct Tnode *nodeCreate(int type, int nodetype, char *name , int value, struct 
 	struct Tnode *node = (struct Tnode *)malloc(sizeof(struct Tnode));
 	node->type = type;
 	node->nodetype = nodetype;
-	strcpy(node->name, name);
+	node->name= name;
 	node->value = value;
 	node->left = left;
 	node->middle = middle;
@@ -96,7 +106,7 @@ void treeTraversal(struct Tnode *root, int tabs)
 		if(root->left != NULL)
 		{   printf("\n");
 		    treeTraversal(root->left,tabs+4);
-		    printf("");
+		    printf(" ");
  
 		}
 		if(root->middle != NULL)

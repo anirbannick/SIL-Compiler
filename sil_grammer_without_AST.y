@@ -1,33 +1,56 @@
+/**
+  *		bison -d -v grammer.y
+  *		flex silgmr.l
+  *		gcc grammer.tab.c -ll -ly -o sil
+  *		./sil < test
+  *
+  *   Created By Anirban Das
+  
+*/
+
+
+
+
+
+
 %{
 
 	#include <ctype.h>
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
-	#include "parseTree.h"
+	#include "sil_parseTree.h"
+	#include "sil_symbolTable.h"
 	int yylex(void);
 	void yyerror(char *s);
 	int type;
+	int linenumber=1;
 	char *id_name;
 	struct Tnode *t;
-	char buffer[100];
-	int z;
+
+	
+	int funcCount;
+	
+
+//	struct Tnode *rootpgm , *rootmain , *rootbody;
+     struct Lsymbol *tempL;
+     struct Gsymbol *tempG;
      
 %}
 
-%token DECL ENDDECL BEGIN END RETURN MAIN_FUNC 
+%token DECL ENDDECL BEGIN1 END RETURN MAIN_FUNC 
 %token INTEGER BOOLEAN NUM ID
 %token IF THEN ELSE ENDIF WHILE DO ENDWHILE READ WRITE SWITCH CASE
 %token ASSIGNMENT_OP ADDOP SUBOP MULOP DIVOP BOOLEAN_OP MODOP 
 %token LE GE LT GT NE EQ AND NOT OR
 %token LEFT_SQR_BRACKET RIGHT_SQR_BRACKET LEFT_ROUND_BRACKET RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET 
-%token SEPERATOR TERMINATOR ADDRESS_OF COLON
+%token SEPARATOR TERMINATOR ADDRESS_OF COLON 
 
 %union {int value; char *name;  struct Tnode *n;}
 
 %type <value>  BOOLEAN_OP NUM
 %type <name> ID
-%type <n> start global_declaration declarations typ item_list item argument_list parameters argument functions normal_function main_function  local_declaration l_declarations l_decl_list function_body expression statements statement assignment_statement conditional_statement iterative_statement input_output_statement int_var function_call parameter_list
+%type <n> start global_declaration declarations typ item_list item argument_list parameters argument functions normal_function main_function  l_declarations l_decl_list function_body expression statements statement function_call parameter_list
 
 
 %nonassoc NE LT LE EQ GT GE
@@ -40,16 +63,21 @@
 %%
 start:
 	global_declaration functions	 		
+	              {$$=nodeCreate(VOID,PROG,"Program",0,$1,$2,NULL);}
     | main_function				   
+                  {$$=nodeCreate(VOID,PROG,"Program",0,$1,NULL,NULL);}
     ;
 
 global_declaration:
     DECL declarations ENDDECL		
+                  {$$=nodeCreate(VOID,GLOBAL,"GDeclBlock",0,$2,NULL,NULL); }
     ;
 
 declarations:
 	declarations typ item_list TERMINATOR	
-	| 						
+	              {$$=nodeCreate(VOID,GLOBAL_LIST,"GDecl",0,$1,$3,NULL);} 
+	| 					
+	              {$$=NULL;}	
 	;
 
 typ:
@@ -58,49 +86,81 @@ typ:
 	;
 	
 item_list:
-    item_list SEPERATOR item 	 
-                     {struct symbolTable *check=lookup(id_name);
-                      if(check==NULL)  install(id_name,type);
-                      else yyerror("Redeclaration Error");
-                      }
+    item_list SEPARATOR item 	 
+                     { 
+						
+						tempG=Glookup(id_name);
+                      if(tempG==NULL)  {
+                                         Ginstall(id_name,type);
+                                         $$=nodeCreate(type,GLOBAL,"GDeclList",0,$1,$3,NULL);
+                                        }
+                                         
+                      else 
+                                 {yyerror("Redeclaration Error");}
+                     
+ 							}
 	| item			
-                      { struct symbolTable *check=lookup(id_name);
-                      if(check==NULL)  install(id_name,type);
-                      else yyerror("Redeclaration Error");
-                      }		           
+                      { 	
+						tempG=Glookup(id_name);
+                         if(tempG==NULL) {
+                                           Ginstall(id_name,type);
+                                           $$=nodeCreate(type,VARLIST,"Item",0,$1,NULL,NULL);
+                                          }
+                      else 
+                                    yyerror("Redeclaration Error");
+                      
+						}		           
 	;
 		
 
 item:
 	ID					      
-                  {id_name=yylval.name;}
+                     {id_name=yylval.name;  $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); }
+
 	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET    
-                  {id_name=yylval.name;}			
+                     { id_name=yylval.name; 
+                       t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
+                       $$=nodeCreate(type,ARRAY,id_name,0,t,NULL,NULL);
+                     }
+			
 	| ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET  
-                   {id_name=yylval.name;}				
+                      {id_name=yylval.name;  $$=nodeCreate(type,FUNC,id_name,0,$3,NULL,NULL);}				
 	;
 
 
 argument_list:
 	argument_list typ  parameters				
-	|argument_list typ  parameters TERMINATOR					  
-	|
+	                    {$$=nodeCreate(VOID,ARGS,"Args",0,$1,$3,NULL);}
+	|argument_list typ  parameters TERMINATOR		
+	                    {$$=nodeCreate(VOID,ARGS,"Args",0,$1,NULL,NULL);}
+				  
+	|                    
+	                    {$$=NULL;}
 	;
 	
 
 	
 parameters:
-	parameters SEPERATOR argument  		      
+	parameters SEPARATOR argument  
+	                     {$$=nodeCreate(type,F_PARAM_LIST,"FormalParameterList",0,$1,$3,NULL); }	
+		      
 	| argument
+	                     { $$=nodeCreate(type,F_PARAM,"FormalParameter",0,$1,NULL,NULL);}
 	;
 	
 argument :
           ID			
-                     {id_name=yylval.name;}		       
+                         {id_name=yylval.name;  
+                          $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); 
+                         }
+		       
           | ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET	
-                      {id_name=yylval.name;}		
+                          {id_name=yylval.name; 
+                            t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
+                            $$=nodeCreate(type,ARRAY,yyval.name,0,t,NULL,NULL);
+                          }		
 	|  ADDRESS_OF ID
-                       {id_name=yylval.name;}				
+                           {id_name=yylval.name; $$=nodeCreate(type,REFERENCE,id_name,0,NULL,NULL,NULL);}				
 	
         ;
            	
@@ -108,26 +168,32 @@ argument :
 
 
 functions:
-	normal_function main_function			
+	normal_function main_function		
+	                        {$$=nodeCreate(type,FUNCDEF,"Funcs",0,$1,$2,NULL);}	
 	; 
 
 normal_function:
-	 normal_function typ ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET local_declaration function_body RIGHT_CURLY_BRACKET 	
-	|						  
+	 normal_function typ ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET function_body RIGHT_CURLY_BRACKET 	
+	                        {$$=nodeCreate(type,FUNCS,id_name,0,$1,$5,$8);}
+	|						 
+	                         {$$=NULL;} 
 	;
 
 main_function:
-	INTEGER MAIN_FUNC LEFT_ROUND_BRACKET RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET main_body RIGHT_CURLY_BRACKET		
+	INTEGER MAIN_FUNC LEFT_ROUND_BRACKET RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET  function_body RIGHT_CURLY_BRACKET		
+	                         {$$=nodeCreate(INT,MAIN,"Main",0,$6,NULL,NULL);}
 	          
 	;
 
 
 
 
-main_body:
-	  DECL  l_declarations ENDDECL BEGIN statements RETURN expression TERMINATOR END	
+function_body:
+	  DECL  l_declarations ENDDECL BEGIN1 statements RETURN expression TERMINATOR END	
+	                         { funcCount++ ; $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$5,$7); }
 	    
-	  | BEGIN statements RETURN expression TERMINATOR END 
+	  | BEGIN1 statements RETURN expression TERMINATOR END 
+	                         { $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$4,NULL);}
 	       
 	
 	  ;
@@ -135,116 +201,366 @@ main_body:
 
 l_declarations :  
                  l_declarations typ l_decl_list TERMINATOR
+                              {$$=nodeCreate(VOID,FDCL,"FuncDcl",0,$1,$3,NULL);} 
                  |
+                              {$$=NULL;}
                  ;
                  
                  
 l_decl_list :  
                l_decl_list SEPARATOR ID
+                             {tempL=Llookup(id_name,funcCount);
+                               if(tempL==NULL)   {
+                                                 Linstall($3,type,funcCount);
+                                                 t=nodeCreate(type,VAR,yyval.name,0,NULL,NULL,NULL);
+                                                 $$=nodeCreate(type,FDCLS,"FDcls",0,$1,t,NULL);
+                                                 }
+                                else  
+                                          yyerror("Redeclaration Error");
+                             }
                |  ID
+                              {tempL=Llookup(id_name,funcCount);
+                               if(tempL==NULL)   {
+                                                 Linstall($1,type,funcCount);
+                                                 $$=nodeCreate(type,VAR,yyval.name,0,NULL,NULL,NULL);
+                                                 }
+
+                                else  
+				                          yyerror("Redeclaration Error");
+				                }
                ;                 
 
+
+
 statements:
-	statements statement 					
+	         statements statement 				
+	                          {  $$=nodeCreate(VOID,STMT,"Stmts",0,$1,$2,NULL);}	
 	    
-	|						   
+	|						  
+	                          {$$=NULL;} 
 	   
 	;
-statement:
-           assignment_statement
- 
-           | conditional_statement
-                
-           | iterative_statement
-          
-           | input_output_statement
-                 
-           ;  
 
-	
-assingment_statement:
-                  ID ASSIGNMENT_OP expression TERMINATOR				  
+
+statement:
+          
+          ID ASSIGNMENT_OP expression TERMINATOR	
+                                          {tempL=Llookup(id_name,funcCount);
+                                            if(tempL!=NULL)
+                                                    { if(tempL->type == $3->type)
+                                                                {  t=nodeCreate(VOID,VAR,yyval.name,0,NULL,NULL,NULL);
+                                                                   $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$3,NULL);
+                                                                 }
+                                                       
+                                                      else 
+                                                            yyerror("Type Does not Match");
+                                                    }
+                     
+                                            else 
+                                                 yyerror("Undeclared Variable"); 
+                                          }			  
                                  
-		  |ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR		
+		  
+		 
+		|  ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
+		                                   {tempL=Llookup(id_name,funcCount); 
+		                                    if(tempL!=NULL)
+	                                            	{  if(tempL->type==$6->type)
+		                                                        {   t=nodeCreate(VOID,ARRAY,yyval.name,0,NULL,NULL,NULL);
+		                                                            $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$6,NULL);
+		                                                         }
+		
+		                                                else 
+		                                                      yyerror("Type Does Not Match");
+		                                             }
+		
+		                                     else 
+		                                            yyerror("Undeclared Variable"); 
+		                                    }		
 				
-		;
- 
-conditional_statement:
-                      IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ENDIF TERMINATOR		
+		
+       
+         | IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ENDIF TERMINATOR	
+                                            {  if($3->type == BOOL)
+                                                         $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,NULL);
+            
+                                                else 
+                                                       yyerror("Expression Does not Have Proper type (Boolean) ");
+                                             }	
                              
-		|IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ELSE statements ENDIF TERMINATOR	
+	
+		|  IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ELSE statements ENDIF TERMINATOR	
+		                                    {  if($3->type==BOOL)
+		                                                   $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,$8);
+		
+		                                        else 
+		                                               yyerror("Expression Does not Have Proper type (Boolean) ");
+		                                   
+		                                    }
 		             
-		;
-					
-iterative_statement:
-                    WHILE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET DO statements ENDWHILE TERMINATOR 
+		
+				
+        | WHILE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET DO statements ENDWHILE TERMINATOR 
+                                              {  if($3->type==BOOL)
+                                                            $$=nodeCreate(VOID,STMT,"WhileStmt",0,$3,$6,NULL) ;
+
+                                                   else 
+					                                        yyerror("Expression Does not Have Proper type (Boolean) ");
+
+					                           }
                             
                                 
-		  ;
-					
-input_output_statement:					
-	                 READ LEFT_ROUND_BRACKET ID RIGHT_ROUND_BRACKET TERMINATOR			    	   
-	                           
-	                | WRITE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET TERMINATOR				      
-	                         
-	                ;
 	
-//int_var :  ID
-  //         | ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET
-    //       ;
+		| READ LEFT_ROUND_BRACKET ID RIGHT_ROUND_BRACKET TERMINATOR			   
+	                                           {  tempL=Llookup(id_name,funcCount);
+	                                              if(tempL!=NULL)
+	                                                     $$=nodeCreate(VOID,STMT,"ReadStmt",0,NULL,NULL,NULL);
+	
+	                                             else 
+	                                                   yyerror("Undeclared Variable"); 
+	
+	                                           }
+	
+		   
+	                           
+	    | WRITE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET TERMINATOR	
+	                                          {  $$=nodeCreate(VOID,STMT,"WriteStmt",0,NULL,NULL,NULL); }			      
+	                         
+	                
+	    ;
+	
 
 
 	
 					
 
 expression:
-	expression ADDOP expression					
+	
+	expression ADDOP expression				
+	                                          { if($1->type== INT && $3->type == INT)
+	                                                      $$=nodeCreate(INT,ADDEXP,"Add",0,$1,$3,NULL);
+	
+	                                              else 
+	                                                     yyerror("Expression Types Do not Match"); 
+	     
+	                                           }	
                
-	| expression SUBOP expression					
+	| expression SUBOP expression				
+	                                           {  if($1->type== INT && $3->type == INT) 
+	                                                       $$=nodeCreate(INT,SUBEXP,"Sub",0,$1,$3,NULL);
+	                                               
+	                                               else 
+			                                               yyerror("Expression Types Do not Match"); 
+
+			                                    }
+			
                     
-	| expression MULOP expression					
+	| expression MULOP expression				
+	                                           {   if($1->type== INT && $3->type == INT) 
+	                                                       $$=nodeCreate(INT,MULEXP,"Mul",0,$1,$3,NULL); 
+	
+	                                		        else 
+			                                                yyerror("Expression Types Do not Match"); 
+
+			                                    }
                     
-	| expression DIVOP expression					
-	| LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET			    	
+	| expression DIVOP expression				
+	                                           {    if($1->type== INT && $3->type == INT)
+	                                                              $$=nodeCreate(INT,DIVEXP,"Div",0,$1,$3,NULL); 
+	
+	                             					 else 
+					                                               yyerror("Expression Types Do not Match"); 
+
+					                             }
+		
+	| LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET			    
+	                                          {   $$=nodeCreate($2->type,PARTHSEXP,"Parthsexp",0,$2,NULL,NULL); }
+		
                                                                
-	| expression AND expression					
-	| expression OR expression					
+	| expression AND expression				
+	                                         {   if($1->type== BOOL && $3->type == BOOL) 
+	                                                             $$=nodeCreate(BOOL,ANDEXP,"AND",0,$1,$3,NULL); 
+	
+	     										 else 
+					                                             yyerror("Expression Types Do not Match"); 
+
+					                          }
+					
+	
+	| expression OR expression				
+	                                          {    if($1->type== BOOL && $3->type == BOOL)
+	                                                           $$=nodeCreate(BOOL,OREXP,"OR",0,$1,$3,NULL); 
+	   
+	 											   else 
+				                                               yyerror("Expression Types Do not Match"); 
+
+				                              }
+				
+		
 	| expression LT expression					
-	| expression GT expression					
-	| expression LE expression					
+	                                          {   if($1->type== INT && $3->type == INT) 
+	                                                         $$=nodeCreate(BOOL,LTEXP,"LT",0,$1,$3,NULL); 
+	
+												  else 
+				                                             yyerror("Expression Types Do not Match"); 
+
+				                              }
+	
+	
+	| expression GT expression				
+	                                          {   if($1->type== INT && $3->type == INT) 
+	                                                         $$=nodeCreate(BOOL,GTEXP,"GT",0,$1,$3,NULL);
+	 
+												   else 
+				                                              yyerror("Expression Types Do not Match"); 
+
+				                              }
+				
+				
+		
+	| expression LE expression				
+	                                           {   if($1->type== INT && $3->type == INT) 
+	                                                          $$=nodeCreate(BOOL,LEEXP,"LE",0,$1,$3,NULL); 
+	
+												    else 
+				                                              yyerror("Expression Types Do not Match"); 
+
+				                                }
+		
+		
 	| expression GE expression					
+	                                          {     if($1->type== INT && $3->type == INT) 
+	                                                           $$=nodeCreate(BOOL,GEEXP,"GE",0,$1,$3,NULL);
+	
+	 											     else 
+				                                               yyerror("Expression Types Do not Match"); 
+
+				                               }
+				
+	
 	| expression EQ expression				
-	| expression NE expression					
+	                                           {   if ($1->type== INT && $3->type == INT)
+	                                                            $$=nodeCreate(BOOL,EQEXP,"EQ",0,$1,$3,NULL); 
+	
+													else 
+					                                             yyerror("Expression Types Do not Match"); 
+
+					                           }
+					
+	
+	| expression NE expression				
+	                                          {    if($1->type== INT && $3->type == INT)
+	                                                            $$=nodeCreate(BOOL,NEEXP,"NE",0,$1,$3,NULL); 
+	
+													 else 
+					                                             yyerror("Expression Types Do not Match"); 
+
+					                           }
+					
+		
 	| NOT expression				    	
+	                                          {    if($2->type== BOOL)
+	                                                              $$=nodeCreate(BOOL,NOTEXP,"NOT",0,$2,NULL,NULL); 
+	
+													 else 
+					                                              yyerror("Expression Types Do not Match"); 
+
+					                           }
+					
+	
 	| ID					    	
-	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET				
+	                                          {  tempL = Llookup(yyval.name,funcCount);  
+	                                             if(tempL!=NULL)
+	                                                       $$=nodeCreate(tempL->type,VAR,yyval.name,0,NULL,NULL,NULL);
+	                                            
+	                                            else 
+			                                               yyerror("Undeclared Variable"); 
+
+			                                   }
+			
+	
+	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET			
+	                                             {  tempL=Llookup(yyval.name,funcCount); 
+	                                                if(tempL!=NULL)
+	                                                       $$=nodeCreate(tempL->type,ARRAY,yyval.name,0,NULL,NULL,NULL); 
+	                                             
+	
+													else 
+					                                        yyerror("Undeclared Variable"); 
+
+					                               }
+	      	
+	
 	| NUM					    	
-	| BOOLEAN_OP					
+	                                              {   $$=nodeCreate(INT,CONST,"IntConst",yylval.value,NULL,NULL,NULL); }
+	
+	
+	| BOOLEAN_OP				
+	                                               { $$=nodeCreate(BOOL,BOOLCONST,"BoolConst",yylval.value,NULL,NULL,NULL);}
+	
+	  	
 	| function_call				   
-    | SUBOP exp %prec UMINUS        
+	                                              { $$=nodeCreate($1->type,FNCALLS,"FuncCall",0,$1,NULL,NULL); }
+	
+	
+    | SUBOP expression %prec UMINUS       
+                                                   { if($2->type==INT)
+                                                              $$=nodeCreate(INT,UMINUS,"Negative",0,$2,NULL,NULL);
+
+												 	else 
+						                                      yyerror("Expression Type Does not Match (INTEGER) "); 
+
+						                              }
+						
 	; 
+	
+	
+	
 
 function_call:
-	ID LEFT_ROUND_BRACKET parameter_list RIGHT_ROUND_BRACKET			
+	  ID LEFT_ROUND_BRACKET parameter_list RIGHT_ROUND_BRACKET			
+	                                            { tempL = Llookup(yyval.name,funcCount); 
+	                                              if(tempL!=NULL)
+	                                                      $$=nodeCreate(tempL->type,FNCALL,id_name,0,$3,NULL,NULL);
+	
+											 	 else 
+					                                     yyerror("Undeclared Variable"); 
+
+					                            }
+					
 	;
+	
+	
+	
 
 parameter_list:
-	parameter_list SEPERATOR expression			
-	| expression					    
+	parameter_list SEPARATOR expression			
+	                                                 { $$=nodeCreate(VOID,FCLISTS,"FuncArgsList",0,$1,NULL,NULL); }
+	
+	| expression					   
+	                                                 {  $$=nodeCreate(VOID,FCLIST,"FuncArg",0,$1,NULL,NULL);}  
+	 
+	|
+	                                                 {$$=NULL;} 
+	
 	;
+
+
+
+
 
 
 %%
 #include "lex.yy.c"
 
 void yyerror(char *s) {
-    fprintf(stderr, "\n\n%s at line number = %d due to %s\n\n",s,linenumber,yytext);
+    fprintf(stderr, "\n\n%s at line number = %d ",s,linenumber);
 	e = 1;
 }
 
 int main(void) {
     yyparse();
-    if(e==0) printf("\n\nParsed Successfully\nLines = %d\n\n",line);
-    else printf("\n\nERROR while parsing\n\n")
+    if(e==0) printf("\n\nParsed Successfully\nLines = %d\n\n",linenumber);
+    else printf("\n\nERROR while parsing\n\n");
     return 0;
 }
