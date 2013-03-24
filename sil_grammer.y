@@ -51,7 +51,7 @@
 
 %type <value>  BOOLEAN_OP NUM
 %type <name> ID
-%type <n> start global_declaration declarations typ item_list item argument_list parameters argument functions normal_function main_function  l_declarations l_decl_list function_body expression statements statement function_call parameter_list
+%type <n> start global_declaration declarations typ item_list item argument_list parameters argument functions normal_function main_function  l_declarations l_decl_list function_body expression statements statement function_call parameter_list identifier litem
 
 
 %nonassoc NE LT LE EQ GT GE
@@ -111,7 +111,7 @@ item_list:
 	| item			
                       { 	
                                   printf ("\n in silgrmmr.y decl checking item_list = item\n");
-
+                                  printf("\n start Glookup of %s\n",id_name);
 						tempG=Glookup(id_name);
                          if(tempG==NULL) {
                                            
@@ -132,18 +132,26 @@ item_list:
 		
 
 item:
-	ID					      
-                     {printf("\n reading item=ID\n");id_name=yylval.name;  $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); }
+	identifier					      
+                     {printf("\n reading item=ID\n"); $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); }
 
-	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET    
-                     { printf("\n reading item=ID[num]\n");id_name=yylval.name; 
+	| identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET    
+                     { printf("\n reading item=ID[num]\n");
                        t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
                        $$=nodeCreate(type,ARRAY,id_name,0,t,NULL,NULL);
                      }
 			
-	| ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET  
-                      {printf("\n reading item=ID(args)\n");id_name=yylval.name;  $$=nodeCreate(type,FUNC,id_name,0,$3,NULL,NULL);}				
+	| identifier  LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET  
+                      {printf("\n reading item=ID(args)\n"); 
+                       t=nodeCreate(VOID,ARGLIST,"ArgList",0,NULL,NULL,NULL);
+                       $$=nodeCreate(type,FUNC,id_name,0,t,NULL,NULL);
+                       }				
 	;
+
+
+
+identifier :
+             ID   { id_name=yylval.name; printf("\n Reading ID with value %s\n", id_name);}
 
 
 argument_list:
@@ -160,25 +168,27 @@ argument_list:
 	
 parameters:
 	parameters SEPARATOR argument  
-	                     {printf("\n reading param = param separator argmnt\n");$$=nodeCreate(type,F_PARAM_LIST,"FormalParameterList",0,$1,$3,NULL); }	
+	                     {printf("\n reading param = param separator argmnt\n");
+	                       $$=nodeCreate(type,F_PARAM_LIST,"FormalParameterList",0,$1,$3,NULL); }	
 		      
 	| argument
 	                     { printf("\n reading param = argmnt\n");$$=nodeCreate(type,F_PARAM,"FormalParameter",0,$1,NULL,NULL);}
 	;
 	
 argument :
-          ID			
-                         {printf("\n reading argmnt = ID\n");id_name=yylval.name;  
+          identifier			
+                         {printf("\n reading argmnt = ID\n"); 
                           $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); 
                          }
 		       
-          | ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET	
-                          {id_name=yylval.name; 
+          | identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET	
+                          {
                             t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
                             $$=nodeCreate(type,ARRAY,yyval.name,0,t,NULL,NULL);
                           }		
-	|  ADDRESS_OF ID
-                           {printf("\n reading argmnt = & ID\n");id_name=yylval.name; $$=nodeCreate(type,REFERENCE,id_name,0,NULL,NULL,NULL);}				
+	|  ADDRESS_OF identifier
+                           {printf("\n reading argmnt = & ID\n");
+                             $$=nodeCreate(type,REFERENCE,id_name,0,NULL,NULL,NULL);}				
 	
         ;
            	
@@ -187,19 +197,19 @@ argument :
 
 functions:
 	normal_function main_function		
-	                        {$$=nodeCreate(type,FUNCDEF,"Funcs",0,$1,$2,NULL);}	
+	                        { $$=nodeCreate(type,FUNCDEF,"Funcs",0,$1,$2,NULL);}	
 	; 
 
 normal_function:
-	 normal_function typ ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET function_body RIGHT_CURLY_BRACKET 	
-	                        {$$=nodeCreate(type,FUNCS,id_name,0,$1,$5,$8);}
+	 normal_function typ identifier LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET function_body RIGHT_CURLY_BRACKET 	
+	                        {printf("\n Reading normal_funtion with NO NULL\n"); $$=nodeCreate(type,FUNCS,id_name,0,$1,$5,$8);}
 	|						 
-	                         {$$=NULL;} 
+	                         {printf("\nReading normal_funtion with NULL\n");  $$=NULL;} 
 	;
 
 main_function:
 	INTEGER MAIN_FUNC LEFT_ROUND_BRACKET RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET  function_body RIGHT_CURLY_BRACKET		
-	                         {$$=nodeCreate(INT,MAIN,"Main",0,$6,NULL,NULL);}
+	                         {printf("\n Reading main_function\n");  $$=nodeCreate(INT,MAIN,"Main",0,$6,NULL,NULL);}
 	          
 	;
 
@@ -208,10 +218,12 @@ main_function:
 
 function_body:
 	  DECL  l_declarations ENDDECL BEGIN1 statements RETURN expression TERMINATOR END	
-	                         { funcCount++ ; $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$5,$7); }
+	                         { printf("\nReading function_body with Local Decl\n");
+	                          funcCount++ ; $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$5,$7); }
 	    
 	  | BEGIN1 statements RETURN expression TERMINATOR END 
-	                         { $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$4,NULL);}
+	                         { printf("\nReading function_body with NO Local Decl\n");
+	                           $$=nodeCreate(VOID,BODY,"FnBody",0,$2,$4,NULL);}
 	       
 	
 	  ;
@@ -219,54 +231,71 @@ function_body:
 
 l_declarations :  
                  l_declarations typ l_decl_list TERMINATOR
-                              {$$=nodeCreate(VOID,FDCL,"FuncDcl",0,$1,$3,NULL);} 
+                              {printf("\nReading local declarations with NOT ldecl= ldecl typ ldecl_list terminator\n");
+                                $$=nodeCreate(VOID,FDCL,"FuncDcl",0,$1,$3,NULL);} 
                  |
-                              {$$=NULL;}
+                              {printf("\nReading local declration with ldecl=NULL\n"); $$=NULL;}
                  ;
                  
                  
 l_decl_list :  
-               l_decl_list SEPARATOR ID
-                             {tempL=Llookup(id_name,funcCount);
-                               if(tempL==NULL)   {
-                                                 Linstall($3,type,funcCount);
+               l_decl_list SEPARATOR litem
+                             {
+                                 printf("\n in Local_decl_list with ldecllist = ldecllist separator ID\n");
+                                tempL=Llookup(id_name,funcCount);
+                               if(tempL==NULL)   {  printf("\n in local_decl_list with tempL == NULL\n");
+                                                 Linstall(id_name,type,funcCount);
+                                                  printf("\n Linstalled %s\n",id_name);
                                                  t=nodeCreate(type,VAR,yyval.name,0,NULL,NULL,NULL);
                                                  $$=nodeCreate(type,FDCLS,"FDcls",0,$1,t,NULL);
                                                  }
-                                else  
+                                else  {   printf("in Loacl_decl_list with tempL !=NULL\n");
                                           yyerror("Redeclaration Error");
+                                     }
                              }
-               |  ID
-                              {tempL=Llookup(id_name,funcCount);
-                               if(tempL==NULL)   {
-                                                 Linstall($1,type,funcCount);
+               |  litem
+                              {    printf("\n in Local_decl_list with ldecllist = ID\n");
+                                 tempL=Llookup(id_name,funcCount);
+                               if(tempL==NULL)   { printf("\n in local_decl_list with tempL == NULL\n");
+                                                 Linstall(id_name,type,funcCount);
+                                                  printf("\n Linstalled %s\n",id_name);
                                                  $$=nodeCreate(type,VAR,yyval.name,0,NULL,NULL,NULL);
                                                  }
 
                                 else  
-				                          yyerror("Redeclaration Error");
+				                         {   printf("in Loacl_decl_list with tempL !=NULL\n");
+				                            yyerror("Redeclaration Error");
+				                         }
 				                }
-               ;                 
+               ;    
+
+
+
+litem :
+         ID   { id_name=yylval.name; printf("\n Reading ID with value %s\n", id_name);}             
 
 
 
 statements:
 	         statements statement 				
-	                          {  $$=nodeCreate(VOID,STMT,"Stmts",0,$1,$2,NULL);}	
+	                          { printf("\n Reading statements with statetements= statements statement\n");
+	                             $$=nodeCreate(VOID,STMT,"Stmts",0,$1,$2,NULL);}	
 	    
 	|						  
-	                          {$$=NULL;} 
+	                          {printf("\n Reading statements with statetements= NULL\n"); $$=NULL;} 
 	   
 	;
 
 
 statement:
           
-          ID ASSIGNMENT_OP expression TERMINATOR	
-                                          {tempL=Llookup(id_name,funcCount);
+          identifier ASSIGNMENT_OP expression TERMINATOR	
+                                          {printf("\n Reading ASSGNStmt and looking for ID = %s\n",id_name);
+                                              tempL=Llookup(id_name,funcCount);
                                             if(tempL!=NULL)
-                                                    { if(tempL->type == $3->type)
-                                                                {  t=nodeCreate(VOID,VAR,yyval.name,0,NULL,NULL,NULL);
+                                                    { printf("\n In ASSGNStmnt and tempL !=NULL\n");
+                                                         if(tempL->type == $3->type)
+                                                                {  t=nodeCreate(VOID,VAR,id_name,0,NULL,NULL,NULL);
                                                                    $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$3,NULL);
                                                                  }
                                                        
@@ -280,11 +309,13 @@ statement:
                                  
 		  
 		 
-		|  ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
-		                                   {tempL=Llookup(id_name,funcCount); 
+		|  identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
+		                                   {printf("\n Reading ASSGNStmt and looking for ID[NUM] = %s\n",id_name);
+		                                     tempL=Llookup(id_name,funcCount); 
 		                                    if(tempL!=NULL)
-	                                            	{  if(tempL->type==$6->type)
-		                                                        {   t=nodeCreate(VOID,ARRAY,yyval.name,0,NULL,NULL,NULL);
+	                                            	{   printf("\n In ASSGNStmnt and tempL !=NULL\n");
+	                                                        if(tempL->type==$6->type)
+		                                                        {   t=nodeCreate(VOID,ARRAY,id_name,0,NULL,NULL,NULL);
 		                                                            $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$6,NULL);
 		                                                         }
 		
@@ -299,7 +330,8 @@ statement:
 		
        
          | IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ENDIF TERMINATOR	
-                                            {  if($3->type == BOOL)
+                                            {  printf("\n Reading IFStmt with if then endif \n");
+                                                     if($3->type == BOOL)
                                                          $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,NULL);
             
                                                 else 
@@ -308,7 +340,8 @@ statement:
                              
 	
 		|  IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ELSE statements ENDIF TERMINATOR	
-		                                    {  if($3->type==BOOL)
+		                                    {  printf("\n Reading IFStmt with if then else endif \n");
+		                                                  if($3->type==BOOL)
 		                                                   $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,$8);
 		
 		                                        else 
@@ -319,7 +352,8 @@ statement:
 		
 				
         | WHILE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET DO statements ENDWHILE TERMINATOR 
-                                              {  if($3->type==BOOL)
+                                              {   printf("\n Reading WHILEStmt \n");
+                                                   if($3->type==BOOL)
                                                             $$=nodeCreate(VOID,STMT,"WhileStmt",0,$3,$6,NULL) ;
 
                                                    else 
@@ -329,8 +363,9 @@ statement:
                             
                                 
 	
-		| READ LEFT_ROUND_BRACKET ID RIGHT_ROUND_BRACKET TERMINATOR			   
-	                                           {  tempL=Llookup(id_name,funcCount);
+		| READ LEFT_ROUND_BRACKET identifier RIGHT_ROUND_BRACKET TERMINATOR			   
+	                                           {  printf("\n Reading READStmt with ID= %s \n", id_name);
+	                                                tempL=Llookup(id_name,funcCount);
 	                                              if(tempL!=NULL)
 	                                                     $$=nodeCreate(VOID,STMT,"ReadStmt",0,NULL,NULL,NULL);
 	
@@ -342,7 +377,8 @@ statement:
 		   
 	                           
 	    | WRITE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET TERMINATOR	
-	                                          {  $$=nodeCreate(VOID,STMT,"WriteStmt",0,NULL,NULL,NULL); }			      
+	                                          { printf("\n Reading WRITEStmt \n"); 
+	                                            $$=nodeCreate(VOID,STMT,"WriteStmt",0,NULL,NULL,NULL); }			      
 	                         
 	                
 	    ;
@@ -355,7 +391,8 @@ statement:
 expression:
 	
 	expression ADDOP expression				
-	                                          { if($1->type== INT && $3->type == INT)
+	                                          { printf("\n Reading ADDOPEXP \n");
+	                                                if($1->type== INT && $3->type == INT)
 	                                                      $$=nodeCreate(INT,ADDEXP,"Add",0,$1,$3,NULL);
 	
 	                                              else 
@@ -364,7 +401,8 @@ expression:
 	                                           }	
                
 	| expression SUBOP expression				
-	                                           {  if($1->type== INT && $3->type == INT) 
+	                                           { printf("\n Reading SUBOPEXP \n");
+	                                              if($1->type== INT && $3->type == INT) 
 	                                                       $$=nodeCreate(INT,SUBEXP,"Sub",0,$1,$3,NULL);
 	                                               
 	                                               else 
@@ -374,7 +412,8 @@ expression:
 			
                     
 	| expression MULOP expression				
-	                                           {   if($1->type== INT && $3->type == INT) 
+	                                           {   printf("\n Reading MULOPEXP \n");
+	                                                if($1->type== INT && $3->type == INT) 
 	                                                       $$=nodeCreate(INT,MULEXP,"Mul",0,$1,$3,NULL); 
 	
 	                                		        else 
@@ -383,7 +422,8 @@ expression:
 			                                    }
                     
 	| expression DIVOP expression				
-	                                           {    if($1->type== INT && $3->type == INT)
+	                                           {   printf("\n Reading DIVOPEXP \n");
+	                                                if($1->type== INT && $3->type == INT)
 	                                                              $$=nodeCreate(INT,DIVEXP,"Div",0,$1,$3,NULL); 
 	
 	                             					 else 
@@ -392,11 +432,13 @@ expression:
 					                             }
 		
 	| LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET			    
-	                                          {   $$=nodeCreate($2->type,PARTHSEXP,"Parthsexp",0,$2,NULL,NULL); }
+	                                          {   printf("\n Reading PARTHEXP \n");
+	                                             $$=nodeCreate($2->type,PARTHSEXP,"Parthsexp",0,$2,NULL,NULL); }
 		
                                                                
 	| expression AND expression				
-	                                         {   if($1->type== BOOL && $3->type == BOOL) 
+	                                         {  printf("\n Reading ANDEXP \n");
+	                                             if($1->type== BOOL && $3->type == BOOL) 
 	                                                             $$=nodeCreate(BOOL,ANDEXP,"AND",0,$1,$3,NULL); 
 	
 	     										 else 
@@ -406,7 +448,8 @@ expression:
 					
 	
 	| expression OR expression				
-	                                          {    if($1->type== BOOL && $3->type == BOOL)
+	                                          { printf("\n Reading OREXP \n"); 
+	                                              if($1->type== BOOL && $3->type == BOOL)
 	                                                           $$=nodeCreate(BOOL,OREXP,"OR",0,$1,$3,NULL); 
 	   
 	 											   else 
@@ -416,7 +459,8 @@ expression:
 				
 		
 	| expression LT expression					
-	                                          {   if($1->type== INT && $3->type == INT) 
+	                                          { printf("\n Reading LTEXP \n"); 
+	                                             if($1->type== INT && $3->type == INT) 
 	                                                         $$=nodeCreate(BOOL,LTEXP,"LT",0,$1,$3,NULL); 
 	
 												  else 
@@ -426,7 +470,8 @@ expression:
 	
 	
 	| expression GT expression				
-	                                          {   if($1->type== INT && $3->type == INT) 
+	                                          {   printf("\n Reading GTEXP \n");       
+	                                              if($1->type== INT && $3->type == INT) 
 	                                                         $$=nodeCreate(BOOL,GTEXP,"GT",0,$1,$3,NULL);
 	 
 												   else 
@@ -437,7 +482,8 @@ expression:
 				
 		
 	| expression LE expression				
-	                                           {   if($1->type== INT && $3->type == INT) 
+	                                           {  printf("\n Reading LEEXP \n");
+	                                               if($1->type== INT && $3->type == INT) 
 	                                                          $$=nodeCreate(BOOL,LEEXP,"LE",0,$1,$3,NULL); 
 	
 												    else 
@@ -447,7 +493,8 @@ expression:
 		
 		
 	| expression GE expression					
-	                                          {     if($1->type== INT && $3->type == INT) 
+	                                          {   printf("\n Reading GEEXP \n"); 
+	                                               if($1->type== INT && $3->type == INT) 
 	                                                           $$=nodeCreate(BOOL,GEEXP,"GE",0,$1,$3,NULL);
 	
 	 											     else 
@@ -457,7 +504,8 @@ expression:
 				
 	
 	| expression EQ expression				
-	                                           {   if ($1->type== INT && $3->type == INT)
+	                                           {  printf("\n Reading EQEXP \n");
+	                                                if ($1->type== INT && $3->type == INT)
 	                                                            $$=nodeCreate(BOOL,EQEXP,"EQ",0,$1,$3,NULL); 
 	
 													else 
@@ -467,7 +515,8 @@ expression:
 					
 	
 	| expression NE expression				
-	                                          {    if($1->type== INT && $3->type == INT)
+	                                          {   printf("\n Reading NEEXP \n");
+	                                               if($1->type== INT && $3->type == INT)
 	                                                            $$=nodeCreate(BOOL,NEEXP,"NE",0,$1,$3,NULL); 
 	
 													 else 
@@ -477,7 +526,8 @@ expression:
 					
 		
 	| NOT expression				    	
-	                                          {    if($2->type== BOOL)
+	                                          {   printf("\n Reading NOTEXP \n");
+	                                                 if($2->type== BOOL)
 	                                                              $$=nodeCreate(BOOL,NOTEXP,"NOT",0,$2,NULL,NULL); 
 	
 													 else 
@@ -486,10 +536,11 @@ expression:
 					                           }
 					
 	
-	| ID					    	
-	                                          {  tempL = Llookup(yyval.name,funcCount);  
+	| identifier					    	
+	                                          { printf("\n Reading ID = %s\n",id_name);
+	                                             tempL = Llookup(id_name,funcCount);  
 	                                             if(tempL!=NULL)
-	                                                       $$=nodeCreate(tempL->type,VAR,yyval.name,0,NULL,NULL,NULL);
+	                                                       $$=nodeCreate(tempL->type,VAR,id_name,0,NULL,NULL,NULL);
 	                                            
 	                                            else 
 			                                               yyerror("Undeclared Variable"); 
@@ -498,9 +549,10 @@ expression:
 			
 	
 	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET			
-	                                             {  tempL=Llookup(yyval.name,funcCount); 
+	                                             { printf("\n Reading ID[num] = %s \n",id_name);
+	                                                tempL=Llookup(id_name,funcCount); 
 	                                                if(tempL!=NULL)
-	                                                       $$=nodeCreate(tempL->type,ARRAY,yyval.name,0,NULL,NULL,NULL); 
+	                                                       $$=nodeCreate(tempL->type,ARRAY,id_name,0,NULL,NULL,NULL); 
 	                                             
 	
 													else 
@@ -510,19 +562,23 @@ expression:
 	      	
 	
 	| NUM					    	
-	                                              {   $$=nodeCreate(INT,CONST,"IntConst",yylval.value,NULL,NULL,NULL); }
+	                                              {  printf("\n Reading NUM =%d \n",yylval.value);
+	                                                 $$=nodeCreate(INT,CONST,"IntConst",yylval.value,NULL,NULL,NULL); }
 	
 	
 	| BOOLEAN_OP				
-	                                               { $$=nodeCreate(BOOL,BOOLCONST,"BoolConst",yylval.value,NULL,NULL,NULL);}
+	                                               { printf("\n Reading BOOLEAN_OP with value = %d \n",yylval.value);
+	                                                 $$=nodeCreate(BOOL,BOOLCONST,"BoolConst",yylval.value,NULL,NULL,NULL);}
 	
 	  	
 	| function_call				   
-	                                              { $$=nodeCreate($1->type,FNCALLS,"FuncCall",0,$1,NULL,NULL); }
+	                                              {printf("\n Reading Function CAll \n");
+	                                                 $$=nodeCreate($1->type,FNCALLS,"FuncCall",0,$1,NULL,NULL); }
 	
 	
     | SUBOP expression %prec UMINUS       
-                                                   { if($2->type==INT)
+                                                   {printf("\n Reading UNIARY SUBOPEXP \n");
+                                                      if($2->type==INT)
                                                               $$=nodeCreate(INT,UMINUS,"Negative",0,$2,NULL,NULL);
 
 												 	else 
