@@ -50,7 +50,12 @@
 #define FCLISTS 137
 #define FCLIST 138
 #define ARGLIST 139
-
+#define ASSGNSTMT 140
+#define IFSTMT 141
+#define IFELSESTMT 142
+#define WHILESTMT 143
+#define READSTMT 144
+#define WRITESTMT 145
 
 
 
