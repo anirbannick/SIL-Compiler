@@ -26,6 +26,7 @@
 	int type;
 	int linenumber=1;
 	char *id_name;
+        
 	struct Tnode *t;
 
 	
@@ -70,44 +71,61 @@ start:
 
 global_declaration:
     DECL declarations ENDDECL		
-                  {$$=nodeCreate(VOID,GLOBAL,"GDeclBlock",0,$2,NULL,NULL); }
+                  {printf("\n reading global declaration \n");$$=nodeCreate(VOID,GLOBAL,"GDeclBlock",0,$2,NULL,NULL); }
     ;
 
 declarations:
 	declarations typ item_list TERMINATOR	
-	              {$$=nodeCreate(VOID,GLOBAL_LIST,"GDecl",0,$1,$3,NULL);} 
+	              {
+                         printf("\n reading declarations from lexical analyzer with declaration typ itemlist terminator\n");
+                         $$=nodeCreate(VOID,GLOBAL_LIST,"GDecl",0,$1,$3,NULL);} 
 	| 					
-	              {$$=NULL;}	
+	              {printf("\n reading declaration from lexical analyzer with null\n");$$=NULL;}	
 	;
 
 typ:
-	INTEGER					    {type = INT;}
-	|BOOLEAN				    {type = BOOL;}
+	INTEGER					    {printf("\n reading typ from lexical analyzer\n");type = INT;}
+	|BOOLEAN				    {printf("\n reading typ from lexical analyzer\n");type = BOOL;}
 	;
 	
 item_list:
     item_list SEPARATOR item 	 
                      { 
+                              printf ("\n in silgrmmr.y decl checking item_list = item_list Separator item\n");
 						
 						tempG=Glookup(id_name);
                       if(tempG==NULL)  {
+                                          printf("\n in silgrammr.y tempg==NULL entered if block \n");
                                          Ginstall(id_name,type);
+                                          printf("\n Ginstalled %s\n",id_name);
                                          $$=nodeCreate(type,GLOBAL,"GDeclList",0,$1,$3,NULL);
                                         }
                                          
                       else 
-                                 {yyerror("Redeclaration Error");}
+                                 {
+                                     printf("\n in silgrammr.y tempg!=NULL entered else block for redeclaration error \n");
+                                      yyerror("Redeclaration Error");
+                                  }
                      
  							}
 	| item			
                       { 	
+                                  printf ("\n in silgrmmr.y decl checking item_list = item\n");
+
 						tempG=Glookup(id_name);
                          if(tempG==NULL) {
+                                           
+                                            printf("\n in silgrammr.y tempg==NULL entered if block \n");
                                            Ginstall(id_name,type);
+                                             printf("\n Ginstalled %s\n",id_name);
                                            $$=nodeCreate(type,VARLIST,"Item",0,$1,NULL,NULL);
                                           }
                       else 
-                                    yyerror("Redeclaration Error");
+                                  {
+
+                                        printf("\n in silgrammr.y tempg!=NULL entered else block for redeclaration error \n");
+                                        yyerror("Redeclaration Error");
+                                  }
                       
 						}		           
 	;
@@ -115,42 +133,42 @@ item_list:
 
 item:
 	ID					      
-                     {id_name=yylval.name;  $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); }
+                     {printf("\n reading item=ID\n");id_name=yylval.name;  $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); }
 
 	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET    
-                     { id_name=yylval.name; 
+                     { printf("\n reading item=ID[num]\n");id_name=yylval.name; 
                        t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
                        $$=nodeCreate(type,ARRAY,id_name,0,t,NULL,NULL);
                      }
 			
 	| ID LEFT_ROUND_BRACKET argument_list RIGHT_ROUND_BRACKET  
-                      {id_name=yylval.name;  $$=nodeCreate(type,FUNC,id_name,0,$3,NULL,NULL);}				
+                      {printf("\n reading item=ID(args)\n");id_name=yylval.name;  $$=nodeCreate(type,FUNC,id_name,0,$3,NULL,NULL);}				
 	;
 
 
 argument_list:
 	argument_list typ  parameters				
-	                    {$$=nodeCreate(VOID,ARGS,"Args",0,$1,$3,NULL);}
+	                    {printf("\n reading arglist = arglist typ param\n");$$=nodeCreate(VOID,ARGS,"Args",0,$1,$3,NULL);}
 	|argument_list typ  parameters TERMINATOR		
-	                    {$$=nodeCreate(VOID,ARGS,"Args",0,$1,NULL,NULL);}
+	                    {printf("\n reading arglist = arglist typ param terminator\n");$$=nodeCreate(VOID,ARGS,"Args",0,$1,NULL,NULL);}
 				  
 	|                    
-	                    {$$=NULL;}
+	                    {printf("\n reading arglist = null\n");$$=NULL;}
 	;
 	
 
 	
 parameters:
 	parameters SEPARATOR argument  
-	                     {$$=nodeCreate(type,F_PARAM_LIST,"FormalParameterList",0,$1,$3,NULL); }	
+	                     {printf("\n reading param = param separator argmnt\n");$$=nodeCreate(type,F_PARAM_LIST,"FormalParameterList",0,$1,$3,NULL); }	
 		      
 	| argument
-	                     { $$=nodeCreate(type,F_PARAM,"FormalParameter",0,$1,NULL,NULL);}
+	                     { printf("\n reading param = argmnt\n");$$=nodeCreate(type,F_PARAM,"FormalParameter",0,$1,NULL,NULL);}
 	;
 	
 argument :
           ID			
-                         {id_name=yylval.name;  
+                         {printf("\n reading argmnt = ID\n");id_name=yylval.name;  
                           $$=nodeCreate(type,VAR,id_name,0,NULL,NULL,NULL); 
                          }
 		       
@@ -160,7 +178,7 @@ argument :
                             $$=nodeCreate(type,ARRAY,yyval.name,0,t,NULL,NULL);
                           }		
 	|  ADDRESS_OF ID
-                           {id_name=yylval.name; $$=nodeCreate(type,REFERENCE,id_name,0,NULL,NULL,NULL);}				
+                           {printf("\n reading argmnt = & ID\n");id_name=yylval.name; $$=nodeCreate(type,REFERENCE,id_name,0,NULL,NULL,NULL);}				
 	
         ;
            	
