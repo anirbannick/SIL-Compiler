@@ -71,7 +71,7 @@ OR	             {return OR ;}
 ":"              {return COLON ;}
 ";"	             {return TERMINATOR ;}
 
-{id}             {yylval.name = yytext;  return ID;}
+{id}             {yylval.name = (char *)malloc(100*sizeof(char)); strcpy(yylval.name,yytext);  return ID;}
 {num}            {yylval.value = atoi(yytext);  return NUM;}
 
 [ \t]	         ;
