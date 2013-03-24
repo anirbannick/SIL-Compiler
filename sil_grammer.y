@@ -32,8 +32,7 @@
 	
 	int funcCount;
 	
-
-//	struct Tnode *rootpgm , *rootmain , *rootbody;
+	 struct Tnode *rootprogram , *rootmain;
      struct Lsymbol *tempL;
      struct Gsymbol *tempG;
      
@@ -64,9 +63,9 @@
 %%
 start:
 	global_declaration functions	 		
-	              {$$=nodeCreate(VOID,PROG,"Program",0,$1,$2,NULL);}
+	              {$$=nodeCreate(VOID,PROG,"Program",0,$1,$2,NULL); rootprogram=$$;}
     | main_function				   
-                  {$$=nodeCreate(VOID,PROG,"Program",0,$1,NULL,NULL);}
+                  {$$=nodeCreate(VOID,PROG,"Program",0,$1,NULL,NULL);  rootprogram = $$;}
     ;
 
 global_declaration:
@@ -209,7 +208,7 @@ normal_function:
 
 main_function:
 	INTEGER MAIN_FUNC LEFT_ROUND_BRACKET RIGHT_ROUND_BRACKET LEFT_CURLY_BRACKET  function_body RIGHT_CURLY_BRACKET		
-	                         {printf("\n Reading main_function\n");  $$=nodeCreate(INT,MAIN,"Main",0,$6,NULL,NULL);}
+	                         {printf("\n Reading main_function\n");  $$=nodeCreate(INT,MAIN,"Main",0,$6,NULL,NULL); rootmain=$$;}
 	          
 	;
 
@@ -290,33 +289,49 @@ statements:
 statement:
           
           identifier ASSIGNMENT_OP expression TERMINATOR	
-                                          {printf("\n Reading ASSGNStmt and looking for ID = %s\n",id_name);
+                                          { printf("\n Reading ASSGNStmt and looking for ID = %s\n",id_name);
                                               tempL=Llookup(id_name,funcCount);
                                             if(tempL!=NULL)
                                                     { printf("\n In ASSGNStmnt and tempL !=NULL\n");
                                                          if(tempL->type == $3->type)
                                                                 {  t=nodeCreate(VOID,VAR,id_name,0,NULL,NULL,NULL);
-                                                                   $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$3,NULL);
+                                                                   $$=nodeCreate(VOID,ASSGNSTMT,"ASGNStmt",0,t,$3,NULL);
                                                                  }
                                                        
                                                       else 
                                                             yyerror("Type Does not Match");
                                                     }
+                                          
                      
                                             else 
-                                                 yyerror("Undeclared Variable"); 
+                                                { tempG= Glookup(id_name);
+                                                 if (tempG!=NULL)
+                              						{ printf("\n In ASSGNStmnt and tempG !=NULL\n");
+                                                      if(tempG->type == $3->type)
+                                                             {  t=nodeCreate(VOID,VAR,id_name,0,NULL,NULL,NULL);
+                                                                $$=nodeCreate(VOID,ASSGNSTMT,"ASGNStmt",0,t,$3,NULL);
+                                                              }
+                                                    
+                                                   else 
+                                                         yyerror("Type Does not Match");
+                                                 }
+                                      
+                                                  else
+							
+                                                      yyerror("Undeclared Variable"); 
+                                                  }
                                           }			  
                                  
 		  
 		 
 		|  identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
-		                                   {printf("\n Reading ASSGNStmt and looking for ID[NUM] = %s\n",id_name);
+		                                   { printf("\n Reading ASSGNStmt and looking for ID[NUM] = %s\n",id_name);
 		                                     tempL=Llookup(id_name,funcCount); 
 		                                    if(tempL!=NULL)
 	                                            	{   printf("\n In ASSGNStmnt and tempL !=NULL\n");
 	                                                        if(tempL->type==$6->type)
 		                                                        {   t=nodeCreate(VOID,ARRAY,id_name,0,NULL,NULL,NULL);
-		                                                            $$=nodeCreate(VOID,STMT,"ASGNStmt",0,t,$6,NULL);
+		                                                            $$=nodeCreate(VOID,ASSGNSTMT,"ASGNStmt",0,t,$6,NULL);
 		                                                         }
 		
 		                                                else 
@@ -324,7 +339,22 @@ statement:
 		                                             }
 		
 		                                     else 
-		                                            yyerror("Undeclared Variable"); 
+		                                           { tempG= Glookup(id_name);
+                                                      if (tempG!=NULL)
+                              						    { printf("\n In ASSGNStmnt and tempG !=NULL\n");
+                                                             if(tempG->type == $6->type)
+                                                                  {  t=nodeCreate(VOID,VAR,id_name,0,NULL,NULL,NULL);
+                                                                      $$=nodeCreate(VOID,ASSGNSTMT,"ASGNStmt",0,t,$6,NULL);
+                                                                   }
+
+                                                             else 
+                                                                    yyerror("Type Does not Match");
+                                                          }
+
+                                                        else
+
+                                                             yyerror("Undeclared Variable"); 
+                                                    }
 		                                    }		
 				
 		
@@ -332,7 +362,7 @@ statement:
          | IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ENDIF TERMINATOR	
                                             {  printf("\n Reading IFStmt with if then endif \n");
                                                      if($3->type == BOOL)
-                                                         $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,NULL);
+                                                         $$=nodeCreate(VOID,IFSTMT,"IfStmt",0,$3,$6,NULL);
             
                                                 else 
                                                        yyerror("Expression Does not Have Proper type (Boolean) ");
@@ -342,7 +372,7 @@ statement:
 		|  IF LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET THEN statements ELSE statements ENDIF TERMINATOR	
 		                                    {  printf("\n Reading IFStmt with if then else endif \n");
 		                                                  if($3->type==BOOL)
-		                                                   $$=nodeCreate(VOID,STMT,"IFStmt",0,$3,$6,$8);
+		                                                   $$=nodeCreate(VOID,IFELSESTMT,"IfElseStmt",0,$3,$6,$8);
 		
 		                                        else 
 		                                               yyerror("Expression Does not Have Proper type (Boolean) ");
@@ -354,7 +384,7 @@ statement:
         | WHILE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET DO statements ENDWHILE TERMINATOR 
                                               {   printf("\n Reading WHILEStmt \n");
                                                    if($3->type==BOOL)
-                                                            $$=nodeCreate(VOID,STMT,"WhileStmt",0,$3,$6,NULL) ;
+                                                            $$=nodeCreate(VOID,WHILESTMT,"WhileStmt",0,$3,$6,NULL) ;
 
                                                    else 
 					                                        yyerror("Expression Does not Have Proper type (Boolean) ");
@@ -367,10 +397,21 @@ statement:
 	                                           {  printf("\n Reading READStmt with ID= %s \n", id_name);
 	                                                tempL=Llookup(id_name,funcCount);
 	                                              if(tempL!=NULL)
-	                                                     $$=nodeCreate(VOID,STMT,"ReadStmt",0,NULL,NULL,NULL);
+	                                                     $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,NULL,NULL,NULL);
 	
 	                                             else 
-	                                                   yyerror("Undeclared Variable"); 
+	                                                   { tempG= Glookup(id_name);
+	                                                      if (tempG!=NULL)
+	                              						    { printf("\n In READStmnt and tempG !=NULL\n");
+	                                                          $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,NULL,NULL,NULL);
+	                                                              
+	                                                          
+	                                                          }
+
+	                                                      else
+
+	                                                         yyerror("Undeclared Variable"); 
+	                                                    }
 	
 	                                           }
 	
@@ -378,7 +419,7 @@ statement:
 	                           
 	    | WRITE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET TERMINATOR	
 	                                          { printf("\n Reading WRITEStmt \n"); 
-	                                            $$=nodeCreate(VOID,STMT,"WriteStmt",0,NULL,NULL,NULL); }			      
+	                                            $$=nodeCreate(VOID,WRITESTMT,"WriteStmt",0,NULL,NULL,NULL); }			      
 	                         
 	                
 	    ;
@@ -536,27 +577,55 @@ expression:
 					                           }
 					
 	
-	| identifier					    	
-	                                          { printf("\n Reading ID = %s\n",id_name);
-	                                             tempL = Llookup(id_name,funcCount);  
+	| ID					    	
+	                                          { printf("\n Reading ID = %s\n",yylval.name);
+	                                             tempL = Llookup(yylval.name,funcCount);  
 	                                             if(tempL!=NULL)
-	                                                       $$=nodeCreate(tempL->type,VAR,id_name,0,NULL,NULL,NULL);
+	                                                       {printf("\n Found with tempL !=NULL %s\n",yylval.name);
+	                                                         $$=nodeCreate(tempL->type,VAR,yylval.name,0,NULL,NULL,NULL);
+	                                                     printf("\n nodeCreated with type= %d and name = %s\n",tempL->type,yylval.name);
+	                                                    }
+	
 	                                            
 	                                            else 
-			                                               yyerror("Undeclared Variable"); 
+			                                              { tempG= Glookup(yylval.name);
+		                                                      if (tempG!=NULL)
+		                              						    { printf("\n Found with tempG!NULL = %s\n", yylval.name);
+		                                                          $$=nodeCreate(tempG->type,VAR,yylval.name,0,NULL,NULL,NULL);
+		                                              printf("\n nodeCreated with type= %d and name = %s\n",tempG->type,yylval.name);   
+
+
+		                                                          }
+
+		                                                      else
+
+		                                                         yyerror("Undeclared Variable"); 
+		                                                    }
 
 			                                   }
 			
 	
 	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET			
-	                                             { printf("\n Reading ID[num] = %s \n",id_name);
-	                                                tempL=Llookup(id_name,funcCount); 
+	                                             { printf("\n Reading ID[num] = %s[] \n",yylval.name);
+	                                                tempL=Llookup(yylval.name,funcCount); 
 	                                                if(tempL!=NULL)
-	                                                       $$=nodeCreate(tempL->type,ARRAY,id_name,0,NULL,NULL,NULL); 
+	                                                       $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,NULL,NULL,NULL); 
 	                                             
 	
 													else 
-					                                        yyerror("Undeclared Variable"); 
+					                                      
+					                                              { tempG= Glookup(yylval.name);
+				                                                      if (tempG!=NULL)
+				                              						    { //printf("\n Reading ID[num] = %s[]\n", name);
+				                                                           $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,NULL,NULL,NULL); 
+
+
+				                                                          }
+
+				                                                      else
+
+				                                                         yyerror("Undeclared Variable"); 
+				                                                    }
 
 					                               }
 	      	
@@ -634,6 +703,7 @@ void yyerror(char *s) {
 
 int main(void) {
     yyparse();
+    treeCreate(rootmain);
     if(e==0) printf("\n\nParsed Successfully\nLines = %d\n\n",linenumber);
     else printf("\n\nERROR while parsing\n\n");
     return 0;
