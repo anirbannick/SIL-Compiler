@@ -1,8 +1,8 @@
-#include<iostream>
+//#include<iostream>
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
-using namespace std;
+//using namespace std;
 
 
 
@@ -15,7 +15,7 @@ int type; // TYPE can be INTEGER or BOOLEAN
 
 /***The TYPE field must be a TypeStruct if user defined types are allowed***/
 
-int size; // Size field for arrays
+//int size; // Size field for arrays
 
 // int BINDING; // Address of the Identifier in Memory
 
@@ -49,13 +49,15 @@ struct Gsymbol *Glookup(char *name) // Look up for a global identifier
 
 {
 	
-	Gsymbol *temp=NULL;
+	struct Gsymbol *temp=NULL;
+	
+	printf("\nin Glookup \nlooking for %s\n",name);
     
     
 
   if(headg!=NULL)
     { temp=headg;
-   
+		printf("\n headg!=NULL\n");
      while (temp!=NULL)
        
          {	printf("found %s\n",temp->name);
@@ -67,26 +69,32 @@ struct Gsymbol *Glookup(char *name) // Look up for a global identifier
                    }
 
             else
-                  temp=temp->next;
+                 { temp=temp->next;
+					printf("\ntemp->name not equal to name\n");
+			     }
 
           }
        }
 
     else
-		return NULL;
+	
+		{printf("\n headg==NULL\n returning NULL\n");	return NULL;}
+		
+ 
+	return NULL;
 	
 	
 }
 
 
 
-void Ginstall(char *name,int type, int size=1)   // Installation
+void Ginstall(char *name, int type)   // Installation
 {
-     Gsymbol *temp=new Gsymbol;
+    struct  Gsymbol *temp=(struct Gsymbol *)malloc(sizeof(struct Gsymbol));
 
      temp->name =  name;
      temp->type=type;
-	temp->size=size;
+	//temp->size=size;
      temp->next=NULL;
 
      	if (headg==NULL)
@@ -112,16 +120,16 @@ struct Lsymbol *Llookup(char *name,int n)
 
 {
 	
-	Lsymbol *temp=NULL;
+ struct	Lsymbol *temp=NULL;
     
-    
+   	printf("\nin Llookup \nlooking for %s , in function no. - %d\n",name,n); 
 
   if(headl[n]!=NULL)
     { temp=headl[n];
-   
+   	printf("\n headg[n]!=NULL\n");
      while (temp!=NULL)
        
-         {
+         {  	printf("found %s\n",temp->name);
             if( strcmp(temp->name,name)==0)
                   {
                       return temp;
@@ -129,12 +137,19 @@ struct Lsymbol *Llookup(char *name,int n)
                    }
 
             else
-                  temp=temp->next;
+                 { temp=temp->next;
+	              printf("\ntemp->name not equal to name\n");
+	             }
 
           }
        }
 
     else
+	    {   printf("\n headg==NULL\n returning NULL\n");
+			return NULL;
+			
+		}
+		
 		return NULL;
 	
 }
@@ -143,7 +158,7 @@ struct Lsymbol *Llookup(char *name,int n)
 
 void Linstall(char *name, int type, int n)
 {
-	Lsymbol *temp=new Lsymbol;
+   struct	Lsymbol *temp=(struct Lsymbol *)malloc(sizeof(struct Lsymbol));
 
      temp->name = name;
      temp->type=type;
