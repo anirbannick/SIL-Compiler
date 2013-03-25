@@ -4,6 +4,7 @@
 #include<stdlib.h>
 //#include<malloc.h>
 //using namespace std;
+int baseg= 1;basel=1000;
 
 
 
@@ -18,7 +19,7 @@ int type; // TYPE can be INTEGER or BOOLEAN
 
 //int size; // Size field for arrays
 
-// int BINDING; // Address of the Identifier in Memory
+int binding; // Address of the Identifier in Memory
 
 //ArgStruct *ARGLIST; // Argument List for functions
 
@@ -36,7 +37,7 @@ struct Lsymbol {
 	char *name; // Name of the Identifier
 
 	int type; // TYPE can be INTEGER or BOOLEAN
-
+	int binding;
 	/***The TYPE field must be a TypeStruct if user defined types are allowed***/
 	
 	struct Lsymbol *next; // Pointer to next Symbol Table Entry */
@@ -90,11 +91,15 @@ struct Gsymbol *Glookup(char *name) // Look up for a global identifier
 
 
 void Ginstall(char *name, int type)   // Installation
-{
+{   
+	int size= 4 ;
     struct  Gsymbol *temp=(struct Gsymbol *)malloc(sizeof(struct Gsymbol));
 
      temp->name =  name;
      temp->type=type;
+	if (type ==1) size = 1; 
+	temp->binding = baseg;
+	baseg= baseg +size;
 	//temp->size=size;
      temp->next=NULL;
 
@@ -159,10 +164,18 @@ struct Lsymbol *Llookup(char *name,int n)
 
 void Linstall(char *name, int type, int n)
 {
+	int size=4;
    struct	Lsymbol *temp=(struct Lsymbol *)malloc(sizeof(struct Lsymbol));
 
      temp->name = name;
      temp->type=type;
+	temp->binding = basel;
+	
+	if (type==1) size =1;
+	
+	basel= basel + size;
+	
+	 
 	
      temp->next=NULL;
 
