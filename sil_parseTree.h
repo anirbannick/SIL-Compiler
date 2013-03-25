@@ -56,6 +56,7 @@
 #define WHILESTMT 143
 #define READSTMT 144
 #define WRITESTMT 145
+#define MODEXP 146
 
 
 
@@ -106,7 +107,11 @@ void treeTraversal(struct Tnode *root, int tabs)
 		else if (root->nodetype == ARRAY)
 			printf("Array(%s)",root->name); 
 		else if (root->nodetype == MAIN)
-			printf("Mian_Func(%s)",root->name);		
+			printf("Mian_Func(%s)",root->name);	
+	    else if (root->nodetype == CONST)
+			printf("IntConst(%d)",root->value);
+	    else if ( root->nodetype == BOOLCONST)
+			printf("BoolConst(%d)",root->value);	
 		else 
 			printf("%s", root->name);
 		if(root->left != NULL)
