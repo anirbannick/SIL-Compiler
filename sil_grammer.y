@@ -21,6 +21,8 @@
 	#include <string.h>
 	#include "sil_parseTree.h"
 	#include "sil_symbolTable.h"
+	#include "sil_intermCodeGen.h"
+	#include "sil_machineCodeGen.h"
 	int yylex(void);
 	void yyerror(char *s);
 	int type;
@@ -32,7 +34,7 @@
 	
 	int funcCount;
 	
-	 struct Tnode *rootprogram , *rootmain;
+	 struct Tnode *rootprogram , *rootmain, *rootstmt;
      struct Lsymbol *tempL;
      struct Gsymbol *tempG;
      
@@ -57,7 +59,7 @@
 %left OR AND 
 %right NOT
 %left ADDOP SUBOP
-%left DIVOP MULOP
+%left DIVOP MULOP MODOP
 %right UMINUS
 
 %%
@@ -136,7 +138,7 @@ item:
 
 	| identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET    
                      { printf("\n reading item=ID[num]\n");
-                       t=nodeCreate(INT,ARRSIZE,"ArrSize",0,NULL,NULL,NULL);
+                       t=nodeCreate(INT,ARRSIZE,"ArrSize",yylval.value,NULL,NULL,NULL);
                        $$=nodeCreate(type,ARRAY,id_name,0,t,NULL,NULL);
                      }
 			
@@ -278,7 +280,7 @@ litem :
 statements:
 	         statements statement 				
 	                          { printf("\n Reading statements with statetements= statements statement\n");
-	                             $$=nodeCreate(VOID,STMT,"Stmts",0,$1,$2,NULL);}	
+	                             $$=nodeCreate(VOID,STMT,"Stmts",0,$1,$2,NULL); rootstmt = $$;}	
 	    
 	|						  
 	                          {printf("\n Reading statements with statetements= NULL\n"); $$=NULL;} 
@@ -324,10 +326,10 @@ statement:
                                  
 		  
 		 
-		|  identifier LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
+		|  identifier LEFT_SQR_BRACKET expression RIGHT_SQR_BRACKET ASSIGNMENT_OP expression TERMINATOR
 		                                   { printf("\n Reading ASSGNStmt and looking for ID[NUM] = %s\n",id_name);
 		                                     tempL=Llookup(id_name,funcCount); 
-		                                    if(tempL!=NULL)
+		                                    if((tempL!=NULL)  && ($3->type== INT) )
 	                                            	{   printf("\n In ASSGNStmnt and tempL !=NULL\n");
 	                                                        if(tempL->type==$6->type)
 		                                                        {   t=nodeCreate(VOID,ARRAY,id_name,0,NULL,NULL,NULL);
@@ -340,7 +342,7 @@ statement:
 		
 		                                     else 
 		                                           { tempG= Glookup(id_name);
-                                                      if (tempG!=NULL)
+                                                      if ((tempG!=NULL)  && ($3->type== INT))
                               						    { printf("\n In ASSGNStmnt and tempG !=NULL\n");
                                                              if(tempG->type == $6->type)
                                                                   {  t=nodeCreate(VOID,VAR,id_name,0,NULL,NULL,NULL);
@@ -397,13 +399,13 @@ statement:
 	                                           {  printf("\n Reading READStmt with ID= %s \n", id_name);
 	                                                tempL=Llookup(id_name,funcCount);
 	                                              if(tempL!=NULL)
-	                                                     $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,NULL,NULL,NULL);
+	                                                     $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,$3,NULL,NULL);
 	
 	                                             else 
 	                                                   { tempG= Glookup(id_name);
 	                                                      if (tempG!=NULL)
 	                              						    { printf("\n In READStmnt and tempG !=NULL\n");
-	                                                          $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,NULL,NULL,NULL);
+	                                                          $$=nodeCreate(VOID,READSTMT,"ReadStmt",0,$3,NULL,NULL);
 	                                                              
 	                                                          
 	                                                          }
@@ -419,7 +421,7 @@ statement:
 	                           
 	    | WRITE LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET TERMINATOR	
 	                                          { printf("\n Reading WRITEStmt \n"); 
-	                                            $$=nodeCreate(VOID,WRITESTMT,"WriteStmt",0,NULL,NULL,NULL); }			      
+	                                            $$=nodeCreate(VOID,WRITESTMT,"WriteStmt",0,$3,NULL,NULL); }			      
 	                         
 	                
 	    ;
@@ -471,6 +473,21 @@ expression:
 					                                               yyerror("Expression Types Do not Match"); 
 
 					                             }
+					
+					
+					
+   | expression MODOP expression				
+											 {   printf("\n Reading MODOPEXP \n");
+												 if($1->type== INT && $3->type == INT) 
+												                                                               
+												          $$=nodeCreate(INT,MODEXP,"Mod",0,$1,$3,NULL); 
+
+												  else 
+														  yyerror("Expression Types Do not Match"); 
+
+				                             }	
+				
+				
 		
 	| LEFT_ROUND_BRACKET expression RIGHT_ROUND_BRACKET			    
 	                                          {   printf("\n Reading PARTHEXP \n");
@@ -605,19 +622,19 @@ expression:
 			                                   }
 			
 	
-	| ID LEFT_SQR_BRACKET NUM RIGHT_SQR_BRACKET			
+	| ID LEFT_SQR_BRACKET expression RIGHT_SQR_BRACKET			
 	                                             { printf("\n Reading ID[num] = %s[] \n",yylval.name);
 	                                                tempL=Llookup(yylval.name,funcCount); 
-	                                                if(tempL!=NULL)
-	                                                       $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,NULL,NULL,NULL); 
+	                                                if((tempL!=NULL) && ($3->type== INT))
+	                                                       $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,$3,NULL,NULL); 
 	                                             
 	
 													else 
 					                                      
 					                                              { tempG= Glookup(yylval.name);
-				                                                      if (tempG!=NULL)
+				                                                      if ((tempG!=NULL)  && ($3->type== INT))
 				                              						    { //printf("\n Reading ID[num] = %s[]\n", name);
-				                                                           $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,NULL,NULL,NULL); 
+				                                                           $$=nodeCreate(tempL->type,ARRAY,yylval.name,0,$3,NULL,NULL); 
 
 
 				                                                          }
@@ -703,7 +720,16 @@ void yyerror(char *s) {
 
 int main(void) {
     yyparse();
+
     treeCreate(rootmain);
+    
+    intermCodeGenerator(rootstmt);
+
+    intermCodeTraversatl();
+
+    machineCodeGenerator(ahead);
+
+
     if(e==0) printf("\n\nParsed Successfully\nLines = %d\n\n",linenumber);
     else printf("\n\nERROR while parsing\n\n");
     return 0;
