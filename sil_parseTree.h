@@ -57,11 +57,16 @@
 #define READSTMT 144
 #define WRITESTMT 145
 #define MODEXP 146
+#define UMINUSEXP 147
 
 
 
 int shift = 0;
 //int lineno = 1;
+
+
+
+
 struct Tnode {
 
 	int type; // Integer, Boolean or Void (for statements)
@@ -74,10 +79,12 @@ struct Tnode {
 	int value; // for constants
 	struct Tnode *left, *middle, *right;
 	
+	int fc;
+	
 };
 
 
-struct Tnode *nodeCreate(int type, int nodetype, char *name , int value, struct Tnode *left, struct Tnode *middle, struct  Tnode *right) {
+struct Tnode *nodeCreate(int type, int nodetype, char *name , int value, struct Tnode *left, struct Tnode *middle, struct  Tnode *right, int fc) {
 
 	struct Tnode *node = (struct Tnode *)malloc(sizeof(struct Tnode));
 	node->type = type;
@@ -87,6 +94,7 @@ struct Tnode *nodeCreate(int type, int nodetype, char *name , int value, struct 
 	node->left = left;
 	node->middle = middle;
 	node->right = right;
+	node->fc=fc;
 	return node;
 }
 
@@ -111,7 +119,9 @@ void treeTraversal(struct Tnode *root, int tabs)
 	    else if (root->nodetype == CONST)
 			printf("IntConst(%d)",root->value);
 	    else if ( root->nodetype == BOOLCONST)
-			printf("BoolConst(%d)",root->value);	
+			printf("BoolConst(%d)",root->value);
+		 else if ( root->nodetype == FUNC)
+			printf("Function(%s)",root->name);	
 		else 
 			printf("%s", root->name);
 		if(root->left != NULL)
@@ -146,6 +156,6 @@ void treeCreate(struct Tnode *root)
 	{	printf("\n");
     		treeTraversal(root,0);
 		printf("\n");
-        }
+      }
     	else printf("NULL\n");
 }
