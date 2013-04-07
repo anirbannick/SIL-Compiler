@@ -40,7 +40,7 @@ int assembleconst(char constant[])
 void add(char *s)
 {   
     int flag = assembleconst(s);
-    if(!flag && strcmp(s,""))
+    if(!flag && (strcmp(s,"")!=0))
     {
         struct Lsymbol *l = Llookup(s,funcCount);
         if(l!= NULL) Lassemble(l);
@@ -168,15 +168,15 @@ void machiceCodeGenerator(struct addrcode *root)
             }    
             else if(strcmp(root->op,"=")==0)
             {   add(root->left);
-                add(root->right);
-                rnum--;
-                gtemp = Glookup(root->t);
-                if(gtemp != NULL)
-                           printf("MOV [%d], R%d\n", gtemp->binding, rnum);
+                //add(root->right);
+                 rnum--;
+                ll = Llookup(root->t);
+                if(ll != NULL)
+                           printf("MOV [%d], R%d\n", ll->binding, rnum);
                 else {
-				           ltemp = Llookup(root->t,funcCount);
-				           if(ltemp !=NULL)
-                                 	printf("MOV [%d], R%d\n", ltemp->binding, rnum);			          
+				           gl = Glookup(root->t,funcCount);
+				           if(gl !=NULL)
+                                 	printf("MOV [%d], R%d\n", gl->binding, rnum);			          
                            else 
                                     printf("MOV [R%d], R%d\n", rnum, rnum-1);
                      }
